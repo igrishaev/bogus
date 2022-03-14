@@ -116,8 +116,11 @@
       result)))
 
 
-(defn repl-prompt []
-  (printf "%s (debug)=> " (ns-name *ns*)))
+(defn make-repl-prompt [& [options]]
+  (let [title
+        (get options :title "debug")]
+    (fn []
+      (printf "%s (%s)=> " (ns-name *ns*) title))))
 
 
 (defn repl-init []
@@ -143,48 +146,58 @@
         (clojure.pprint/pprint data)))))
 
 
-(defn repl-caught [^Throwable e]
+(defn make-repl-caught [& [options]]
 
-  (println)
+  (let [stack-trace?
+        (get options :stack-trace? false)]
 
-  (let [indent "  "]
+    (fn [^Throwable e]
 
-    (doseq [e (ex-chain e)]
-      (println (-> e
-                   class
-                   .getCanonicalName))
-      (print indent)
-      (println (ex-message e))
-      (when-let [data (ex-data e)]
-        (print indent)
-        (clojure.pprint/pprint data))))
+      (println)
 
-  #_
-  (doseq [el (.getStackTrace e)]
-    (println (trace/print-trace-element el))))
+      (let [indent "  "]
+
+        (doseq [e (ex-chain e)]
+          (println (-> e
+                       class
+                       .getCanonicalName))
+          (print indent)
+          (println (ex-message e))
+          (when-let [data (ex-data e)]
+            (print indent)
+            (clojure.pprint/pprint data))))
+
+      (when stack-trace?
+        (doseq [el (.getStackTrace e)]
+          (println (trace/print-trace-element el)))))))
 
 
-(def repl-defaults
+(defn make-repl-defaults [& [options]]
   {:init   repl-init
    :eval   repl-eval
    :print  repl-print
    :read   repl-read
-   :prompt repl-prompt
-   :caught repl-caught})
+   :prompt (make-repl-prompt options)
+   :caught (make-repl-caught options)})
 
 
-(defmacro debug [& repl-opt]
+(defmacro debug [& [options]]
   `(with-globals
      (apply main/repl
-            (apply concat (merge ~repl-defaults ~repl-opt)))))
+            (apply concat (make-repl-defaults ~options)))))
 
 
 (defn debug-reader [form]
-  `(do (debug) ~form))
+  (let [options (meta form)]
+    `(do (debug ~options) ~form)))
 
 
 #_
-(let [a 1] (debug) (+ a 2))
+(let [a 1]
+  (debug {:title "test1"})
+  (+ a 2))
 
 #_
-(let [a 1] #bg/debug (+ a 2))
+(let [a 1]
+  #bg/debug ^{:title "test2" :stack-trace? true}
+  (+ a 2))
