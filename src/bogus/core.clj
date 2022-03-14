@@ -187,4 +187,4 @@
 (let [a 1] (debug) (+ a 2))
 
 #_
-(let [a 1] #bg/debug ^{:foo 42} (+ a 2))
+(let [a 1] #bg/debug (+ a 2))
