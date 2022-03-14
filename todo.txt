@@ -1,4 +1,2 @@
-;; prompt: debug
-;; show help
 ;; rename?
 ;; reader

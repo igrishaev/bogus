@@ -1,1 +1,1 @@
-{bogus/break bogus.core/debug-reader}
+{bg/debug bogus.core/debug-reader}
