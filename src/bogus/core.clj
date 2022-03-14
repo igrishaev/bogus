@@ -48,7 +48,7 @@
 
 (defmacro eval+ [& body]
   `(with-globals
-     (eval ~(list* 'do ~@body))))
+     (eval '(do ~@body))))
 
 
 (defn repl-eval [form]
