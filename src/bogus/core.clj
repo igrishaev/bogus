@@ -73,7 +73,7 @@
         (promise)
 
         lab-input
-        (new JLabel "Input")
+        (new JLabel "Input (eval all forms or selected)")
 
         lab-output
         (new JLabel "Output")
@@ -152,7 +152,9 @@
                 (with-out-str
                   (pprint/pprint locals))]
 
-            (.setText area-output output)))
+            (.setText area-output ";; locals")
+            (.append area-output "\r\n")
+            (.append area-output output)))
 
         fn-inspect
         (fn []
@@ -209,7 +211,7 @@
     (.setLabelFor lab-output area-output)
     (.setLabelFor lab-log area-log)
 
-    (.setBounds lab-input  20   5 100 20)
+    (.setBounds lab-input  20   5 300 20)
     (.setBounds lab-output 20 185 100 20)
     (.setBounds lab-log    20 385 100 20)
 
