@@ -82,7 +82,7 @@
         (new JLabel "Log")
 
         frame
-        (new JFrame)
+        (new JFrame (format "Bogus debugger: %s" (ns-name name-space)))
 
         btn-eval
         (new JButton "Eval")
@@ -119,7 +119,8 @@
         (fn []
 
           (let [input
-                (.getText area-input)]
+                (or (.getSelectedText area-input)
+                    (.getText area-input))]
 
             (when-not (str/blank? input)
               (let [result
@@ -173,7 +174,8 @@
 
           (windowIconified [this e])
 
-          (windowOpened [this e]))]
+          (windowOpened [this e]
+            (fn-locals)))]
 
     (.addWindowListener frame frame-listener)
 
