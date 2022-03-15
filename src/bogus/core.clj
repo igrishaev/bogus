@@ -233,7 +233,7 @@
 
 
 #_
-(show-gui {} *ns*)
+(show-gui {'foo 42} *ns*)
 
 
 (defmacro debug [& [options]]
