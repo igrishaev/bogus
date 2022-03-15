@@ -1,203 +1,257 @@
 (ns bogus.core
   (:require
-   [clojure.main :as main]
+   [clojure.string :as str]
    [clojure.pprint :as pprint]
    [clojure.inspector :as inspector]
-   [clojure.stacktrace :as trace]))
+   [clojure.stacktrace :as trace])
+  (:import
+   (javax.swing JFrame
+                JLabel
+                JDialog
+                JTextArea
+                JPanel
+                JScrollPane
+                JButton)
+   (java.awt.event ActionListener
+                   WindowListener)))
 
 
-(def dump-file "dump.edn")
+(defn throwable? [e]
+  (instance? Throwable e))
 
 
-(defmacro with-globals [& body]
-
-  (let [syms
-        (vec (keys &env))
-
-        sym-pairs
-        (for [sym syms]
-          [sym (symbol (format "__OLD_%s__" sym))])]
-
-    `(do
-
-       (intern ~'*ns* '~'__locals__
-               ~(into {} (for [sym syms]
-                           [(list 'quote sym) sym])))
-
-       ~@(for [[sym sym-old] sym-pairs]
-           `(do
-              (when-let [sym-var# (resolve '~sym)]
-                (intern ~'*ns* '~sym-old @sym-var#))
-              (intern ~'*ns* '~sym ~sym)))
-
-       (try
-
-         ~@body
-
-         (finally
-
-           (ns-unmap ~'*ns* '~'__locals__)
-
-           ~@(for [[sym sym-old] (reverse sym-pairs)]
-               `(do
-                  (ns-unmap ~'*ns* '~sym)
-                  (when-let [sym-var# (resolve '~sym-old)]
-                    (intern ~'*ns* '~sym @sym-var#)
-                    (ns-unmap ~'*ns* '~sym-old)))))))))
+(defn get-old-sym [sym]
+  (symbol (format "__OLD_%s__" sym)))
 
 
-(defmacro eval+ [& body]
-  `(with-globals
-     (eval '(do ~@body))))
+(defn globalize [locals]
+
+  (doseq [[sym value] locals]
+
+    (let [sym-old
+          (get-old-sym sym)]
+
+      (when-let [sym-var (resolve sym)]
+        (intern *ns* sym-old @sym-var))
+
+      (intern *ns* sym value))))
 
 
-(defn repl-eval [form]
-  (case form
+(defn de-globalize [locals]
 
-    (!h !help !l !locals !d !dump !i !inspect)
-    form
+  (doseq [[sym value] locals]
 
-    ;; else
-    (eval form)))
+    (let [sym-old
+          (get-old-sym sym)]
 
+      (ns-unmap *ns* sym)
 
-(def help-message
-  (with-out-str
-    (println)
-    (println         "Help:")
-    (println         "------------------")
-    (println         "!h, !help         show this message")
-    (println         "!l, !locals       show local variables")
-    (println (format "!d, !dump         save local variables to the '%s' file" dump-file))
-    (println         "!q, !quit, !exit  quit debugging")))
+      (when-let [sym-var (resolve sym-old)]
+        (intern *ns* sym @sym-var)
+        (ns-unmap *ns* sym-old)))))
 
 
-(defn repl-print [val]
-
-  (let [locals
-        (some-> '__locals__ resolve deref)]
-
-    (case val
-
-      (!h !help)
-      (do
-        (println help-message))
-
-      (!l !locals)
-      (do
-        (println)
-        (println "Locals:")
-        (println "------------------")
-        (pprint/pprint locals))
-
-      (!i !inspect)
-      (inspector/inspect-tree locals)
-
-      (!d !dump)
-      (do
-        (spit dump-file
-              (with-out-str
-                (pprint/pprint locals)))
-        (println (format "Saved to the file '%s'" dump-file))
-        (println))
+(defmacro with-globalize [locals & body]
+  `(do
+     (globalize ~locals)
+     (try
+       ~@body
+       (finally
+         (de-globalize ~locals)))))
 
 
-      ;; else
-      (do
-        (pprint/pprint val)))))
+(defmacro with-locals [[bind] & body]
+  `(let [~bind ~(into {} (for [sym (keys &env)]
+                           [(list 'quote sym) sym]))]
+
+     ~@body))
 
 
-(defn repl-read [request-prompt request-exit]
-  (let [result
-        (main/repl-read request-prompt request-exit)]
+(defn show-gui [locals name-space]
 
-    (if (contains? '#{!q !quit !exit} result)
-      request-exit
-      result)))
+  (let [latch
+        (promise)
+
+        lab-input
+        (new JLabel "Input")
+
+        lab-output
+        (new JLabel "Output")
+
+        lab-log
+        (new JLabel "Log")
+
+        frame
+        (new JFrame)
+
+        btn-eval
+        (new JButton "Eval")
+
+        btn-locals
+        (new JButton "Locals")
+
+        btn-inspect
+        (new JButton "Inspect")
+
+        area-input
+        (new JTextArea)
+
+        area-output
+        (new JTextArea)
+
+        area-log
+        (new JTextArea)
+
+        scroll-input
+        (new JScrollPane area-input)
+
+        scroll-output
+        (new JScrollPane area-output)
+
+        scroll-log
+        (new JScrollPane area-log)
+
+        fn-close
+        (fn []
+          (deliver latch true))
+
+        fn-eval
+        (fn []
+
+          (let [input
+                (.getText area-input)]
+
+            (when-not (str/blank? input)
+              (let [result
+                    (binding [*ns* name-space]
+                      (with-globalize locals
+                        (try
+                          (eval (read-string input))
+                          (catch Throwable e
+                            e))))
+
+                    output
+                    (with-out-str
+                      (if (throwable? result)
+                        (trace/print-stack-trace result)
+                        (pprint/pprint result)))]
+
+                (.setText area-output output)
+
+                (.append area-log input)
+                (.append area-log "\r\n")
+                (.append area-log output)
+                (.append area-log "\r\n")
+
+                (.setCaretPosition area-log (.. area-log getDocument getLength))))))
+
+        fn-locals
+        (fn []
+          (let [output
+                (with-out-str
+                  (pprint/pprint locals))]
+
+            (.setText area-output output)))
+
+        fn-inspect
+        (fn []
+          (inspector/inspect-tree locals))
+
+        frame-listener
+        (reify WindowListener
+
+          (windowActivated [this e])
+
+          (windowClosed [this e])
+
+          (windowClosing [this e]
+            (fn-close))
+
+          (windowDeactivated [this e])
+
+          (windowDeiconified [this e])
+
+          (windowIconified [this e])
+
+          (windowOpened [this e]))]
+
+    (.addWindowListener frame frame-listener)
+
+    (.addActionListener btn-eval
+                        (reify ActionListener
+                          (actionPerformed [this e]
+                            (fn-eval))))
+
+    (.addActionListener btn-locals
+                        (reify ActionListener
+                          (actionPerformed [this e]
+                            (fn-locals))))
+
+    (.addActionListener btn-inspect
+                        (reify ActionListener
+                          (actionPerformed [this e]
+                            (fn-inspect))))
+
+    (.setBounds btn-eval     20 130 100 50)
+    (.setBounds btn-locals  130 130 100 50)
+    (.setBounds btn-inspect 240 130 100 50)
+
+    (.setBounds scroll-input  20  25 460 100)
+    (.setBounds scroll-output 20 205 460 175)
+    (.setBounds scroll-log    20 405 460 350)
+
+    (.setEditable area-output false)
+    (.setEditable area-log false)
+
+    (.setLabelFor lab-input area-input)
+    (.setLabelFor lab-output area-output)
+    (.setLabelFor lab-log area-log)
+
+    (.setBounds lab-input  20   5 100 20)
+    (.setBounds lab-output 20 185 100 20)
+    (.setBounds lab-log    20 385 100 20)
+
+    (.add frame lab-input)
+    (.add frame lab-output)
+    (.add frame lab-log)
+
+    (.add frame btn-eval)
+    (.add frame btn-locals)
+    (.add frame btn-inspect)
+
+    (.add frame scroll-input)
+    (.add frame scroll-output)
+    (.add frame scroll-log)
+
+    (.setSize frame 500 800)
+    (.setLayout frame nil)
+    (.setVisible frame true)
+
+    latch))
 
 
-(defn make-repl-prompt [& [options]]
-  (let [title
-        (get options :title "debug")]
-    (fn []
-      (printf "%s (%s)=> " (ns-name *ns*) title))))
-
-
-(defn repl-init []
-  (println help-message))
-
-
-(defn ex-chain [e]
-  (take-while some?
-    (iterate ex-cause e)))
-
-
-(defn ex-print
-  [^Throwable e]
-  (let [indent "  "]
-    (doseq [e (ex-chain e)]
-      (println (-> e
-                   class
-                   .getCanonicalName))
-      (print indent)
-      (println (ex-message e))
-      (when-let [data (ex-data e)]
-        (print indent)
-        (clojure.pprint/pprint data)))))
-
-
-(defn make-repl-caught [& [options]]
-
-  (let [stack-trace?
-        (get options :stack-trace? false)]
-
-    (fn [^Throwable e]
-
-      (println)
-
-      (let [indent "  "]
-
-        (doseq [e (ex-chain e)]
-          (println (-> e
-                       class
-                       .getCanonicalName))
-          (print indent)
-          (println (ex-message e))
-          (when-let [data (ex-data e)]
-            (print indent)
-            (clojure.pprint/pprint data))))
-
-      (when stack-trace?
-        (doseq [el (.getStackTrace e)]
-          (println (trace/print-trace-element el)))))))
-
-
-(defn make-repl-defaults [& [options]]
-  {:init   repl-init
-   :eval   repl-eval
-   :print  repl-print
-   :read   repl-read
-   :prompt (make-repl-prompt options)
-   :caught (make-repl-caught options)})
+#_
+(show-gui {} *ns*)
 
 
 (defmacro debug [& [options]]
-  `(with-globals
-     (apply main/repl
-            (apply concat (make-repl-defaults ~options)))))
+  (let [the-ns *ns*]
+    `(with-locals [locals#]
+       @(show-gui locals# ~the-ns))))
 
 
 (defn debug-reader [form]
   (let [options (meta form)]
     `(do (debug ~options) ~form)))
 
+#_
+(let [a 1
+      b 2]
+  (let [c 3]
+    (with-locals [locals]
+      (println locals))))
 
 #_
-(let [a 1]
-  (debug {:title "test1"})
-  (+ a 2))
-
-#_
-(let [a 1]
-  #bg/debug ^{:title "test2" :stack-trace? true}
-  (+ a 2))
+(let [xx 22
+      yy 33]
+  (debug))
