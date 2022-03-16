@@ -87,6 +87,13 @@ useful when examining massive chunks of data.
 
 ![](img/screen3.png)
 
+The Log area tracks the history of the expressions you executed and their
+results. That's useful sometimes to copy-paste it somewhere. Should you get an
+exception, it gets rendered with the `clojure.stacktrace/print-stack-trace`
+function (which probably needs some improvements).
+
+![](img/screen4.png)
+
 ## How does it work
 
 ## Why
