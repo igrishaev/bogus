@@ -44,7 +44,7 @@ Once you have the dependency and the `bogus.core` namespace imported, place the
 
 Now run the function, and you'll see the UI:
 
-![](img/scheen1.png)
+![](img/screen1.png)
 
 (to be continued)
 
