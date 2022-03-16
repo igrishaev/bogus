@@ -15,7 +15,7 @@ Lein:
 Deps.edn
 
 ```clojure
-{com.github.igrishaev/bofus {:mvn/version "0.1.0"}}
+{com.github.igrishaev/bogus {:mvn/version "0.1.0"}}
 ```
 
 The best way to use Bogus is to setup it locally in your `profiles.clj` file:
