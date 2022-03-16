@@ -94,9 +94,67 @@ function (which probably needs some improvements).
 
 ![](img/screen4.png)
 
-## How does it work
+You can have several debug breakpoints, for example:
+
+```clojure
+(defn do-some-action []
+  (let [a 1
+        b 2
+        c (+ a b)]
+    #bg/debug
+    (+ a b c)
+    (let [d 9]
+      #bg/debug
+      (* a b c d))))
+```
+
+The first debug session will take the `a`, `b`, and `c` locals, whereas the
+second one will have `a`, `b`, `c`, and `d`. You won't proceed to the second
+session until you close the first window.
+
+Bogus debugger works in tests, in nREPL, in ordinary REPL, in Manifold, in the
+futures as well. Here is a small demo of having two debug sessions in parallel
+threads:
+
+```clojure
+(let [f1 (future
+           (let [a 1]
+             #bg/debug
+             (+ a 1)))
+      f2 (future
+           (let [b 2]
+             #bg/debug
+             (+ b 1)))]
+  (+ @f1 @f2))
+```
+
+If you run this code, you'll get the two windows each having their own locals:
+
+![](img/screen5.png)
+
+The second session has the `f1` local var captured from the `let` clause. If you
+try to `deref` it, the entire REPL will hang due to the mutual blocking, so be
+careful when dealing with parallel debugging.
+
+## How it works
+
+The under-hood of Bogus is simple: it captures the local vars from the `&env`
+mapping available in a macro. Then there is a couple of functions that
+"globalize" the locals by injecting them into the origin namespace using
+`clojure.core/intern`. Once the namespace is populated, the `eval` form treats
+local vars as globals. Before leaving the macros, the vars are "deglobalized"
+meaning all the injected vars are removed. The macros is smart enough to
+preserve existing global vars: it temporary assigns them another name like
+`__OLD_my-var__`.
 
 ## Why
+
+The idea of making my own debugger came into my mind while I was writing a new
+chapter about nREPL and code evaluation. Although Cider provides much more
+powerful tools for debugging, I still believe Bogus might be useful for someone
+new to Clojure. The main benefit of Bogus is, it doesn't require the whole nREPL
+stuff and Emacs. One can use it with any editor or environment. After all,
+tinkering with Bogus gave me some good material for the book.
 
 ## Other
 
