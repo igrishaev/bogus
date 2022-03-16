@@ -63,7 +63,7 @@ any Clojure-friendly form in the input textarea and press "Eval". The result
 will take place in the output textarea. You can copy it from there to your
 editor.
 
-The input can take many Clojure forms at once. They are exceuted as follows:
+The input can take many Clojure forms at once. They are executed as follows:
 
 ```clojure
 (eval '(do (form1) (form2 ...)))
