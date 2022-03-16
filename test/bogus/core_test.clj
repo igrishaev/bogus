@@ -1,124 +1,42 @@
 (ns bogus.core-test
   (:require
-   [clojure.test :refer [is deftest testing]]
-   [bogus.core :refer [with-globals eval+]]))
+   [bogus.core :refer [with-locals
+                       with-globalize]]
+   [clojure.test :refer [is deftest testing]]))
 
 
+(deftest test-with-locals
 
-(def A 1)
-(def B 2)
-(def C 3)
+  (let [a 1
+        b 2]
+    (with-locals [locals1]
+      (let [c 3
+            d 4]
+        (with-locals [locals2]
 
-
-(deftest test-with-globals-ok
-
-  (let [A 100
-        B 200]
-
-    (let [result
-          (with-globals
-            (+ A B C))]
-
-      (is (= 303 result)))))
+          (is (= '{a 1, b 2, locals1 {a 1, b 2}, c 3, d 4}
+                 locals2)))))))
 
 
-(deftest test-with-globals-locals-map
+(deftest test-with-globalize
 
-  (let [A 100
-        B 200]
+  (intern *ns* 'foo 111)
+  (intern *ns* 'bar 222)
 
-    (with-globals
+  (with-globalize *ns* '{foo 42 bar 33}
 
-      (let [locals
-            @(resolve '__locals__)]
+    (is (= 111 @(resolve '__OLD_foo__)))
+    (is (= 222 @(resolve '__OLD_bar__)))
 
-        (is (= '{A 100, B 200} locals))))))
+    (is (= 42 @(resolve 'foo)))
+    (is (= 33 @(resolve 'bar)))
+    (is (= 75 (eval '(+ foo bar)))))
 
+  (is (nil? (resolve '__OLD_foo__)))
+  (is (nil? (resolve '__OLD_bar__)))
 
-#_
-(deftest test-with-globals-old-symbols
+  (is (= 111 @(resolve 'foo)))
+  (is (= 222 @(resolve 'bar)))
 
-  (let [A 100
-        B 200]
-
-    (with-globals
-
-      (is (= 100 A))
-      (is (= 200 B))
-      (is (=   3 C))
-
-      (is (= 1 @(resolve '__OLD_A__)))
-      (is (= 2 @(resolve '__OLD_B__)))
-      (is (nil? (resolve '__OLD_C__))))
-
-    (is (= A 100))
-    (is (= B 200))
-
-    (is (nil? (resolve '__OLD_A__)))
-    (is (nil? (resolve '__OLD_B__))))
-
-  (is (= A 1))
-  (is (= B 2))
-  (is (= C 3)))
-
-
-(deftest test-with-globals-nested
-
-  (let [A 100
-        B 200]
-
-    (let [foo :a
-          bar :b
-
-          func
-          (fn [x]
-
-            (with-globals
-
-              (let [locals
-                    @(resolve '__locals__)]
-
-                (is (= '{A 100, B 200, foo :a, bar :b, x 42}
-                       locals)))))]
-
-      (func 42))))
-
-
-(deftest test-with-globals-locals-levels
-
-  (let [p 1
-        q 2]
-
-    (with-globals
-
-      (let [locals1
-            @(resolve '__locals__)]
-
-        (is (= '{p 1, q 2} locals1))
-
-        (let [x 3
-              y 4]
-
-          (with-globals
-
-            (let [locals2
-                  @(resolve '__locals__)]
-
-              (is (= '{p 1, q 2, locals1 {p 1, q 2}, x 3, y 4}
-                     locals2))))
-
-          ;;
-          ;; ideally, the locals from level 1 must be still available
-          ;;
-          (let [locals1
-                (resolve '__locals__)]
-
-            (is (nil? locals1))))))))
-
-
-(deftest test-eval+
-
-  (let [a 10
-        b 20]
-
-    (is (= 30 (eval+ (+ a b))))))
+  (ns-unmap *ns* 'foo)
+  (ns-unmap *ns* 'bar))

@@ -24,40 +24,44 @@
   (symbol (format "__OLD_%s__" sym)))
 
 
-(defn globalize [locals]
+(defn get-fq-sym [the-ns sym]
+  (symbol (name (ns-name the-ns)) (name sym)))
+
+
+(defn globalize [the-ns locals]
 
   (doseq [[sym value] locals]
 
     (let [sym-old
           (get-old-sym sym)]
 
-      (when-let [sym-var (resolve sym)]
-        (intern *ns* sym-old @sym-var))
+      (when-let [sym-var (resolve (get-fq-sym the-ns sym))]
+        (intern the-ns sym-old @sym-var))
 
-      (intern *ns* sym value))))
+      (intern the-ns sym value))))
 
 
-(defn de-globalize [locals]
+(defn de-globalize [the-ns locals]
 
   (doseq [[sym value] locals]
 
     (let [sym-old
           (get-old-sym sym)]
 
-      (ns-unmap *ns* sym)
+      (ns-unmap the-ns sym)
 
-      (when-let [sym-var (resolve sym-old)]
-        (intern *ns* sym @sym-var)
-        (ns-unmap *ns* sym-old)))))
+      (when-let [sym-var (resolve (get-fq-sym the-ns sym-old))]
+        (intern the-ns sym @sym-var)
+        (ns-unmap the-ns sym-old)))))
 
 
-(defmacro with-globalize [locals & body]
+(defmacro with-globalize [the-ns locals & body]
   `(do
-     (globalize ~locals)
+     (globalize ~the-ns ~locals)
      (try
        ~@body
        (finally
-         (de-globalize ~locals)))))
+         (de-globalize ~the-ns ~locals)))))
 
 
 (defmacro with-locals [[bind] & body]
@@ -67,7 +71,7 @@
      ~@body))
 
 
-(defn show-gui [locals name-space]
+(defn show-gui [the-ns locals]
 
   (let [latch
         (promise)
@@ -82,7 +86,7 @@
         (new JLabel "Log")
 
         frame
-        (new JFrame (format "Bogus debugger: %s" (ns-name name-space)))
+        (new JFrame (format "Bogus debugger: %s" (ns-name the-ns)))
 
         btn-eval
         (new JButton "Eval")
@@ -124,12 +128,12 @@
 
             (when-not (str/blank? input)
               (let [result
-                    (binding [*ns* name-space]
-                      (with-globalize locals
-                        (try
-                          (eval (read-string input))
-                          (catch Throwable e
-                            e))))
+                    (with-globalize the-ns locals
+                      (try
+                        (binding [*ns* the-ns]
+                          (eval (read-string input)))
+                        (catch Throwable e
+                          e)))
 
                     output
                     (with-out-str
@@ -235,13 +239,13 @@
 
 
 #_
-(show-gui {'foo 42} *ns*)
+(show-gui *ns* {'foo 42})
 
 
 (defmacro debug [& [options]]
   (let [the-ns *ns*]
     `(with-locals [locals#]
-       @(show-gui locals# ~the-ns))))
+       @(show-gui ~the-ns locals#))))
 
 
 (defn debug-reader [form]
