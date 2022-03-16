@@ -66,17 +66,17 @@ editor.
 The input can take many Clojure forms at once. They are executed as follows:
 
 ```clojure
-(eval '(do (form1) (form2 ...)))
+(eval '(do (form1) (form2) ...))
 ```
 
 so you'll get the result of the last one.
 
 If you mark some text in the input with selection, only this fragment of code
-will be execute.
+will be executed.
 
 ![](img/screen2.png)
 
-In your code, you can use any local variables as they're global ones. In the
+In the input code, you can use any local variables as they're global ones. In the
 example above we've executed the `(+ a b c)` form referencing local `a`, `b`,
 and `c` from the `let` clause.
 
