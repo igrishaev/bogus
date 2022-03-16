@@ -1,7 +1,7 @@
 (defproject com.github.igrishaev/bogus "0.1.0-SNAPSHOT"
 
   :description
-  "A small, NIH-reasoned debugger for Clojure"
+  "A small, GUI-powered, NIH-reasoned debugger for Clojure"
 
   :url
   "https://github.com/igrishaev/bogus"

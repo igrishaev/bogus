@@ -1,44 +1,51 @@
-# bogus
+# Bogus
 
-FIXME: description
+[NIH]: https://en.wikipedia.org/wiki/Not_invented_here
+
+A small, GUI-powered, [NIH][NIH]-reasoned debugger for Clojure.
 
 ## Installation
 
-Download from http://example.com/FIXME.
+Lein:
+
+```clojure
+[com.github.igrishaev/bogus "0.1.0"]
+```
+
+Deps.edn
+
+```clojure
+{com.github.igrishaev/bofus {:mvn/version "0.1.0"}}
+```
+
+The best way to use Bogus is to setup it locally in your `profiles.clj` file:
+
+```clojure
+;; ~/.lein/profiles.clj
+
+{:user
+ {:dependencies [[com.github.igrishaev/bogus "0.1.0"]]
+  :injections [(require 'bogus.core)]}}
+```
 
 ## Usage
 
-FIXME: explanation
+Once you have the dependency and the `bogus.core` namespace imported, place the
+`#bg/debug` tag anywhere in your code:
 
-    $ java -jar bogus-0.1.0-standalone.jar [args]
+```clojure
+(defn do-some-action []
+  (let [a 1
+        b 2
+        c (+ a b)]
+    #bg/debug
+    (+ a b c)))
+```
 
-## Options
+Now run the function, and you'll see the UI:
 
-FIXME: listing of options this app accepts.
+![](img/scheen1.png)
 
-## Examples
+(to be continued)
 
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
-
-## License
-
-Copyright © 2022 FIXME
-
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
-
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+Copyright &copy; 2022 Ivan Grishaev
