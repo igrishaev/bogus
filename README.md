@@ -139,23 +139,13 @@ careful when dealing with parallel debugging.
 ## How it works
 
 The under-hood of Bogus is simple: it captures the local vars from the `&env`
-mapping available in a macro. Then there is a special `eval+` function that
-shifts the locals inside the form it's going to evaluate:
-
-```
-;; locals
-'{a 1 b 2}
-
-;; form
-'(+ a b)
-
-;; result
-(eval '(let [a 1 b 2]
-         (+ a b)))
-```
-
-In the initial version of Bogus, there were some manipulations with the global
-variables using `intern` and `resolve`. But nowadays they're gone.
+mapping available in a macro. Then there is a couple of functions that
+"globalize" the locals by injecting them into the origin namespace using
+`clojure.core/intern`. Once the namespace is populated, the `eval` form treats
+local vars as globals. Before leaving the macros, the vars are "deglobalized"
+meaning all the injected vars are removed. The macros is smart enough to
+preserve existing global vars: it temporary assigns them another name like
+`__OLD_my-var__`.
 
 ## Why
 

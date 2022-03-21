@@ -2,7 +2,6 @@
   (:require
    [clojure.string :as str]
    [clojure.pprint :as pprint]
-   [clojure.walk :as walk]
    [clojure.inspector :as inspector]
    [clojure.stacktrace :as trace])
   (:import
@@ -24,9 +23,48 @@
   (instance? Throwable e))
 
 
-(defn eval+ [locals & body]
-  (eval `(let [~@(mapcat identity locals)]
-           (do ~@body))))
+(defn get-old-sym [sym]
+  (symbol (format "__OLD_%s__" sym)))
+
+
+(defn get-fq-sym [the-ns sym]
+  (symbol (name (ns-name the-ns)) (name sym)))
+
+
+(defn globalize [the-ns locals]
+
+  (doseq [[sym value] locals]
+
+    (let [sym-old
+          (get-old-sym sym)]
+
+      (when-let [sym-var (resolve (get-fq-sym the-ns sym))]
+        (intern the-ns sym-old @sym-var))
+
+      (intern the-ns sym value))))
+
+
+(defn de-globalize [the-ns locals]
+
+  (doseq [[sym value] locals]
+
+    (let [sym-old
+          (get-old-sym sym)]
+
+      (ns-unmap the-ns sym)
+
+      (when-let [sym-var (resolve (get-fq-sym the-ns sym-old))]
+        (intern the-ns sym @sym-var)
+        (ns-unmap the-ns sym-old)))))
+
+
+(defmacro with-globalize [the-ns locals & body]
+  `(do
+     (globalize ~the-ns ~locals)
+     (try
+       ~@body
+       (finally
+         (de-globalize ~the-ns ~locals)))))
 
 
 (defmacro with-locals [[bind] & body]
@@ -36,7 +74,13 @@
 
 
 (defn wrap-do [input]
-  (read-string (format "(do %s)" input)))
+  (format "(do %s)" input))
+
+
+(defn eval+ [the-ns locals form]
+  (with-globalize the-ns locals
+    (binding [*ns* the-ns]
+      (eval form))))
 
 
 (defn show-gui [the-ns locals]
@@ -97,8 +141,9 @@
             (when-not (str/blank? input)
               (let [result
                     (try
-                      (binding [*ns* the-ns]
-                        (eval+ locals (wrap-do input)))
+                      (let [form
+                            (read-string (wrap-do input))]
+                        (eval+ the-ns locals form))
                       (catch Throwable e
                         e))
 
@@ -206,13 +251,10 @@
     latch))
 
 
-#_
-(show-gui *ns* {'foo 42})
-
-
 (defmacro debug [& [options]]
-  `(with-locals [locals#]
-     @(show-gui *ns* locals#)))
+  (let [the-ns *ns*]
+    `(with-locals [locals#]
+       @(show-gui ~the-ns locals#))))
 
 
 (defn debug-reader [form]
@@ -220,12 +262,23 @@
     `(do (debug ~options) ~form)))
 
 #_
-(let [a 1
-      b 2]
-  (let [c 3]
-    (println (get-locals))))
+(do
 
-#_
-(let [xx 22
-      yy 33]
-  (debug))
+  (let [a 1
+        b 2]
+    (let [c 3]
+      (with-locals [locals]
+        locals)))
+
+
+  (let [xx 22
+        yy 33
+        zz (list 1 2 3)]
+    (debug))
+
+
+  (eval+ *ns* {'list (list 1 2 3)} 'list)
+
+  (show-gui *ns* {'foo 42})
+
+  )
