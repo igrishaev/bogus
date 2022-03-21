@@ -2,6 +2,7 @@
   (:require
    [clojure.string :as str]
    [clojure.pprint :as pprint]
+   [clojure.walk :as walk]
    [clojure.inspector :as inspector]
    [clojure.stacktrace :as trace])
   (:import
@@ -16,59 +17,26 @@
                    WindowListener)))
 
 
+(def br "\r\n")
+
+
 (defn throwable? [e]
   (instance? Throwable e))
 
 
-(defn get-old-sym [sym]
-  (symbol (format "__OLD_%s__" sym)))
-
-
-(defn get-fq-sym [the-ns sym]
-  (symbol (name (ns-name the-ns)) (name sym)))
-
-
-(defn globalize [the-ns locals]
-
-  (doseq [[sym value] locals]
-
-    (let [sym-old
-          (get-old-sym sym)]
-
-      (when-let [sym-var (resolve (get-fq-sym the-ns sym))]
-        (intern the-ns sym-old @sym-var))
-
-      (intern the-ns sym value))))
-
-
-(defn de-globalize [the-ns locals]
-
-  (doseq [[sym value] locals]
-
-    (let [sym-old
-          (get-old-sym sym)]
-
-      (ns-unmap the-ns sym)
-
-      (when-let [sym-var (resolve (get-fq-sym the-ns sym-old))]
-        (intern the-ns sym @sym-var)
-        (ns-unmap the-ns sym-old)))))
-
-
-(defmacro with-globalize [the-ns locals & body]
-  `(do
-     (globalize ~the-ns ~locals)
-     (try
-       ~@body
-       (finally
-         (de-globalize ~the-ns ~locals)))))
+(defn eval+ [locals & body]
+  (eval `(let [~@(mapcat identity locals)]
+           (do ~@body))))
 
 
 (defmacro with-locals [[bind] & body]
   `(let [~bind ~(into {} (for [sym (keys &env)]
                            [(list 'quote sym) sym]))]
-
      ~@body))
+
+
+(defn wrap-do [input]
+  (read-string (format "(do %s)" input)))
 
 
 (defn show-gui [the-ns locals]
@@ -128,12 +96,11 @@
 
             (when-not (str/blank? input)
               (let [result
-                    (with-globalize the-ns locals
-                      (try
-                        (binding [*ns* the-ns]
-                          (eval (read-string input)))
-                        (catch Throwable e
-                          e)))
+                    (try
+                      (binding [*ns* the-ns]
+                        (eval+ locals (wrap-do input)))
+                      (catch Throwable e
+                        e))
 
                     output
                     (with-out-str
@@ -144,9 +111,9 @@
                 (.setText area-output output)
 
                 (.append area-log input)
-                (.append area-log "\r\n")
+                (.append area-log br)
                 (.append area-log output)
-                (.append area-log "\r\n")
+                (.append area-log br)
 
                 (.setCaretPosition area-log (.. area-log getDocument getLength))))))
 
@@ -157,7 +124,8 @@
                   (pprint/pprint locals))]
 
             (.setText area-output ";; locals")
-            (.append area-output "\r\n")
+            (.append area-output br)
+            (.append area-output br)
             (.append area-output output)))
 
         fn-inspect
@@ -243,9 +211,8 @@
 
 
 (defmacro debug [& [options]]
-  (let [the-ns *ns*]
-    `(with-locals [locals#]
-       @(show-gui ~the-ns locals#))))
+  `(with-locals [locals#]
+     @(show-gui *ns* locals#)))
 
 
 (defn debug-reader [form]
@@ -256,8 +223,7 @@
 (let [a 1
       b 2]
   (let [c 3]
-    (with-locals [locals]
-      (println locals))))
+    (println (get-locals))))
 
 #_
 (let [xx 22

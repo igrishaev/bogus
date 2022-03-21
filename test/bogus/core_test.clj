@@ -1,7 +1,8 @@
 (ns bogus.core-test
   (:require
    [bogus.core :refer [with-locals
-                       with-globalize]]
+                       wrap-do
+                       eval+]]
    [clojure.test :refer [is deftest testing]]))
 
 
@@ -9,34 +10,27 @@
 
   (let [a 1
         b 2]
+
     (with-locals [locals1]
+
       (let [c 3
             d 4]
+
         (with-locals [locals2]
 
           (is (= '{a 1, b 2, locals1 {a 1, b 2}, c 3, d 4}
                  locals2)))))))
 
 
-(deftest test-with-globalize
+(deftest test-wrap-do
+  (is (= '(do (+ 1 2) (+ 1 3))
+         (wrap-do "(+ 1 2) (+ 1 3)"))))
 
-  (intern *ns* 'foo 111)
-  (intern *ns* 'bar 222)
 
-  (with-globalize *ns* '{foo 42 bar 33}
+(deftest test-eval+
 
-    (is (= 111 @(resolve '__OLD_foo__)))
-    (is (= 222 @(resolve '__OLD_bar__)))
+  (let [result
+        (eval+ '{aa 1 bb 2 xx 3}
+               '(+ aa bb xx))]
 
-    (is (= 42 @(resolve 'foo)))
-    (is (= 33 @(resolve 'bar)))
-    (is (= 75 (eval '(+ foo bar)))))
-
-  (is (nil? (resolve '__OLD_foo__)))
-  (is (nil? (resolve '__OLD_bar__)))
-
-  (is (= 111 @(resolve 'foo)))
-  (is (= 222 @(resolve 'bar)))
-
-  (ns-unmap *ns* 'foo)
-  (ns-unmap *ns* 'bar))
+    (is (= 6 result))))
