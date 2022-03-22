@@ -7,9 +7,7 @@
   (:import
    (javax.swing JFrame
                 JLabel
-                JDialog
                 JTextArea
-                JPanel
                 JScrollPane
                 JButton)
    (java.awt.event ActionListener
@@ -23,50 +21,6 @@
   (instance? Throwable e))
 
 
-(defn get-old-sym [sym]
-  (symbol (format "__OLD_%s__" sym)))
-
-
-(defn get-fq-sym [the-ns sym]
-  (symbol (name (ns-name the-ns)) (name sym)))
-
-
-(defn globalize [the-ns locals]
-
-  (doseq [[sym value] locals]
-
-    (let [sym-old
-          (get-old-sym sym)]
-
-      (when-let [sym-var (resolve (get-fq-sym the-ns sym))]
-        (intern the-ns sym-old @sym-var))
-
-      (intern the-ns sym value))))
-
-
-(defn de-globalize [the-ns locals]
-
-  (doseq [[sym value] locals]
-
-    (let [sym-old
-          (get-old-sym sym)]
-
-      (ns-unmap the-ns sym)
-
-      (when-let [sym-var (resolve (get-fq-sym the-ns sym-old))]
-        (intern the-ns sym @sym-var)
-        (ns-unmap the-ns sym-old)))))
-
-
-(defmacro with-globalize [the-ns locals & body]
-  `(do
-     (globalize ~the-ns ~locals)
-     (try
-       ~@body
-       (finally
-         (de-globalize ~the-ns ~locals)))))
-
-
 (defmacro with-locals [[bind] & body]
   `(let [~bind ~(into {} (for [sym (keys &env)]
                            [(list 'quote sym) sym]))]
@@ -77,10 +31,21 @@
   (format "(do %s)" input))
 
 
+(def ^:dynamic *locals* nil)
+
+
 (defn eval+ [the-ns locals form]
-  (with-globalize the-ns locals
-    (binding [*ns* the-ns]
-      (eval form))))
+
+  (binding [*locals* locals
+            *ns* the-ns]
+
+    (eval `(let ~(reduce
+                  (fn [result sym]
+                    (conj result sym `(get *locals* '~sym)))
+                  []
+                  (keys locals))
+             ~form))))
+
 
 
 (defn show-gui [the-ns locals]
@@ -109,6 +74,9 @@
         btn-inspect
         (new JButton "Inspect")
 
+        btn-clear
+        (new JButton "Clear")
+
         area-input
         (new JTextArea)
 
@@ -130,6 +98,12 @@
         fn-close
         (fn []
           (deliver latch true))
+
+        fn-clear
+        (fn []
+          (.setText area-input "")
+          (.setText area-output "")
+          (.setText area-log ""))
 
         fn-eval
         (fn []
@@ -213,9 +187,15 @@
                           (actionPerformed [this e]
                             (fn-inspect))))
 
+    (.addActionListener btn-clear
+                        (reify ActionListener
+                          (actionPerformed [this e]
+                            (fn-clear))))
+
     (.setBounds btn-eval     20 130 100 50)
     (.setBounds btn-locals  130 130 100 50)
     (.setBounds btn-inspect 240 130 100 50)
+    (.setBounds btn-clear   350 130 100 50)
 
     (.setBounds scroll-input  20  25 460 100)
     (.setBounds scroll-output 20 205 460 175)
@@ -239,6 +219,7 @@
     (.add frame btn-eval)
     (.add frame btn-locals)
     (.add frame btn-inspect)
+    (.add frame btn-clear)
 
     (.add frame scroll-input)
     (.add frame scroll-output)
@@ -250,6 +231,9 @@
 
     latch))
 
+#_
+(show-gui *ns* {'foo 42})
+
 
 (defmacro debug [& [options]]
   (let [the-ns *ns*]
@@ -260,6 +244,7 @@
 (defn debug-reader [form]
   (let [options (meta form)]
     `(do (debug ~options) ~form)))
+
 
 #_
 (do
@@ -278,7 +263,5 @@
 
 
   (eval+ *ns* {'list (list 1 2 3)} 'list)
-
-  (show-gui *ns* {'foo 42})
 
   )
