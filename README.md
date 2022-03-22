@@ -9,13 +9,13 @@ A small, GUI-powered, [NIH][NIH]-reasoned debugger for Clojure.
 Lein:
 
 ```clojure
-[com.github.igrishaev/bogus "0.1.2"]
+[com.github.igrishaev/bogus "0.1.3"]
 ```
 
 Deps.edn
 
 ```clojure
-{com.github.igrishaev/bogus {:mvn/version "0.1.2"}}
+{com.github.igrishaev/bogus {:mvn/version "0.1.3"}}
 ```
 
 The best way to use Bogus is to setup it locally in your `profiles.clj` file:
@@ -24,7 +24,7 @@ The best way to use Bogus is to setup it locally in your `profiles.clj` file:
 ;; ~/.lein/profiles.clj
 
 {:user
- {:dependencies [[com.github.igrishaev/bogus "0.1.2"]]
+ {:dependencies [[com.github.igrishaev/bogus "0.1.3"]]
   :injections [(require 'bogus.core)]}}
 ```
 
