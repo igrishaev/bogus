@@ -139,7 +139,7 @@ careful when dealing with parallel debugging.
 ## Conditional break
 
 The breakpoints might carry a condition which is useful in cycles. Pass the
-`:where` clause to the form's metadata. The debugger will only pop up if the
+`:when` clause to the form's metadata. The debugger will only pop up if the
 clause gets evaluated to true:
 
 ```clojure
