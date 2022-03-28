@@ -242,8 +242,17 @@
 
 
 (defn debug-reader [form]
-  (let [options (meta form)]
-    `(do (debug ~options) ~form)))
+  (let [options (meta form)
+        when-clause (:when options)]
+
+    (if when-clause
+
+      `(do
+         (when ~when-clause
+           (debug ~options))
+         ~form)
+
+      `(do (debug ~options) ~form))))
 
 
 #_
@@ -263,5 +272,9 @@
 
 
   (eval+ *ns* {'list (list 1 2 3)} 'list)
+
+  (doseq [x (range 9)]
+    #bg/debug ^{:when (= x 3)}
+    (println x))
 
   )

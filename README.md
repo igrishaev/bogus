@@ -136,6 +136,20 @@ The second session has the `f1` local var captured from the `let` clause. If you
 try to `deref` it, the entire REPL will hang due to the mutual blocking, so be
 careful when dealing with parallel debugging.
 
+## Conditional break
+
+The breakpoints might carry a condition which is useful in cycles. Pass the
+`:where` clause to the form's metadata. The debugger will only pop up if the
+clause gets evaluated to true:
+
+```clojure
+(doseq [x (range 9)]
+  #bg/debug ^{:when (= x 3)}
+  (println x))
+```
+
+The idea is stolen from the nREPL/Cider debugger.
+
 ## How it works
 
 The under-hood of Bogus is simple: it captures the local vars from the `&env`

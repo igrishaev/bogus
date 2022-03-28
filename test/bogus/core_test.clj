@@ -2,7 +2,8 @@
   (:require
    [bogus.core :refer [eval+
                        wrap-do
-                       with-locals]]
+                       with-locals
+                       debug-reader]]
    [clojure.test :refer [is deftest testing]]))
 
 
@@ -72,3 +73,21 @@
          (eval+ the-ns
                 {'aaa 1}
                 '(+ GLOBAL_VAR aaa))))))
+
+
+(deftest test-tag-reader
+
+  (is (= '(do (bogus.core/debug {:line 83 :column 25})
+              (println 42))
+
+         (debug-reader '(println 42)))))
+
+
+(deftest test-tag-reader-when
+
+  (is (= '(do
+            (clojure.core/when (= i 42)
+              (bogus.core/debug {:line 93, :column 21, :when (= i 42)}))
+            (println 42))
+
+         '#bg/debug ^{:when (= i 42)} (println 42))))
