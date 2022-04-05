@@ -277,4 +277,8 @@
     #bg/debug ^{:when (= x 3)}
     (println x))
 
-  )
+  (loop [items [1 2 3 4 5]]
+    #bg/debug
+    (when-let [item (first items)]
+      (println item)
+      (recur (rest items)))))
