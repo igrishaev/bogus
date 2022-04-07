@@ -273,6 +273,8 @@
 
   (eval+ *ns* {'list (list 1 2 3)} 'list)
 
+  ;; prevent syntax error for lein local profile
+
   ;; (doseq [x (range 9)]
   ;;   #bg/debug ^{:when (= x 3)}
   ;;   (println x))
