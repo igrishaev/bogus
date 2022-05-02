@@ -87,7 +87,7 @@
 
   (is (= '(do
             (clojure.core/when (= i 42)
-              (bogus.core/debug {:line 93, :column 21, :when (= i 42)}))
+              (bogus.core/debug {:line 93, :column 18, :when (= i 42)}))
             (println 42))
 
-         '#bg/debug ^{:when (= i 42)} (println 42))))
+         '#bogus ^{:when (= i 42)} (println 42))))

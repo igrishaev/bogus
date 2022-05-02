@@ -36,7 +36,9 @@ place one of these two forms into your code:
 ```clojure
 (bogus.core/debug)
 ;; or
-#bg/debug
+#bogus
+;; or
+#bg/debug ;; deprecated tag
 ```
 
 For example:
@@ -46,7 +48,7 @@ For example:
   (let [a 1
         b 2
         c (+ a b)]
-    #bg/debug ;; or (bogus.core/debug)
+    #bogus ;; or (bogus.core/debug)
     (+ a b c)))
 ```
 
@@ -101,10 +103,10 @@ You can have several debug breakpoints, for example:
   (let [a 1
         b 2
         c (+ a b)]
-    #bg/debug
+    #bogus
     (+ a b c)
     (let [d 9]
-      #bg/debug
+      #bogus
       (* a b c d))))
 ```
 
@@ -119,11 +121,11 @@ threads:
 ```clojure
 (let [f1 (future
            (let [a 1]
-             #bg/debug
+             #bogus
              (+ a 1)))
       f2 (future
            (let [b 2]
-             #bg/debug
+             #bogus
              (+ b 1)))]
   (+ @f1 @f2))
 ```
@@ -144,7 +146,7 @@ clause gets evaluated to true:
 
 ```clojure
 (doseq [x (range 9)]
-  #bg/debug ^{:when (= x 3)}
+  #bogus ^{:when (= x 3)}
   (println x))
 ```
 
