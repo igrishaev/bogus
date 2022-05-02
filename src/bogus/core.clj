@@ -184,6 +184,14 @@
     (.setLayout frame nil)
     (.setVisible frame true)
 
+    ;; (.toFront frame)
+    ;; (.requestFocus frame)
+    ;; (.setState frame JFrame/NORMAL)
+
+    ;; trigger the focus
+    (.setAlwaysOnTop frame true)
+    (.setAlwaysOnTop frame false)
+
     latch))
 
 #_
