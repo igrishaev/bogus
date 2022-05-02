@@ -77,7 +77,7 @@
 
 (deftest test-tag-reader
 
-  (is (= '(do (bogus.core/debug {:line 83 :column 25})
+  (is (= '(do (bogus.core/debug {:line 83 :column 25 :form (println 42)})
               (println 42))
 
          (debug-reader '(println 42)))))
@@ -87,7 +87,8 @@
 
   (is (= '(do
             (clojure.core/when (= i 42)
-              (bogus.core/debug {:line 93, :column 18, :when (= i 42)}))
+              (bogus.core/debug
+               {:line 94 :column 18 :when (= i 42) :form (println 42)}))
             (println 42))
 
          '#bogus ^{:when (= i 42)} (println 42))))

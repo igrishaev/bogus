@@ -11,7 +11,9 @@
                 JScrollPane
                 JButton)
    (java.awt.event ActionListener
-                   WindowListener)))
+                   WindowListener
+                   KeyListener
+                   KeyEvent)))
 
 
 (def br "\r\n")
@@ -47,14 +49,16 @@
              ~form))))
 
 
-
-(defn show-gui [the-ns locals]
+(defn show-gui [the-ns locals & [options]]
 
   (let [latch
         (promise)
 
+        {:keys [form]}
+        options
+
         lab-input
-        (new JLabel "Input (eval all forms or selected)")
+        (new JLabel "Input. Eval all forms or selected only. Press Enter + Shift/Control to eval")
 
         lab-output
         (new JLabel "Output")
@@ -109,8 +113,9 @@
         (fn []
 
           (let [input
-                (or (.getSelectedText area-input)
-                    (.getText area-input))]
+                (str/trim
+                 (or (.getSelectedText area-input)
+                     (.getText area-input)))]
 
             (when-not (str/blank? input)
               (let [result
@@ -168,7 +173,7 @@
           (windowIconified [this e])
 
           (windowOpened [this e]
-            (fn-locals)))]
+            #_(fn-locals)))]
 
     (.addWindowListener frame frame-listener)
 
@@ -192,6 +197,23 @@
                           (actionPerformed [this e]
                             (fn-clear))))
 
+
+    (.addKeyListener area-input
+                     (proxy [KeyListener] []
+                       (keyReleased [e])
+                       (keyTyped [e])
+                       (keyPressed [^KeyEvent e]
+                         (when (and
+                                (or (.isShiftDown e)
+                                    (.isControlDown e))
+                                (= (.getKeyCode e) KeyEvent/VK_ENTER))
+                           (fn-eval)))))
+
+    (when form
+      (.setText area-input
+                (with-out-str
+                  (pprint/pprint form))))
+
     (.setBounds btn-eval     20 130 100 50)
     (.setBounds btn-locals  130 130 100 50)
     (.setBounds btn-inspect 240 130 100 50)
@@ -208,7 +230,7 @@
     (.setLabelFor lab-output area-output)
     (.setLabelFor lab-log area-log)
 
-    (.setBounds lab-input  20   5 300 20)
+    (.setBounds lab-input  20   5 500 20)
     (.setBounds lab-output 20 185 100 20)
     (.setBounds lab-log    20 385 100 20)
 
@@ -232,18 +254,28 @@
     latch))
 
 #_
-(show-gui *ns* {'foo 42})
+(show-gui *ns* {'foo 42} {:form '(+ 1 2 3)})
 
 
-(defmacro debug [& [options]]
-  (let [the-ns *ns*]
+(defmacro debug [& [{:as options
+                     :keys [form]}]]
+  (let [the-ns *ns*
+
+        options
+        (dissoc options :form)]
+
     `(with-locals [locals#]
-       @(show-gui ~the-ns locals#))))
+       @(show-gui ~the-ns locals#
+                  (assoc ~options :form (quote ~form))))))
 
 
 (defn debug-reader [form]
-  (let [options (meta form)
-        when-clause (:when options)]
+  (let [options
+        (-> (meta form)
+            (assoc :form form))
+
+        {when-clause :when}
+        options]
 
     (if when-clause
 
