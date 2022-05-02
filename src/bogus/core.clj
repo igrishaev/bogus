@@ -5,7 +5,9 @@
    [clojure.inspector :as inspector]
    [clojure.stacktrace :as trace])
   (:import
+   (javax.swing.tree TreeModel)
    (javax.swing JFrame
+                JTree
                 JLabel
                 JTextArea
                 JScrollPane
@@ -63,23 +65,11 @@
         lab-output
         (new JLabel "Output")
 
-        lab-log
-        (new JLabel "Log")
+        lab-locals
+        (new JLabel "Locals")
 
         frame
         (new JFrame (format "Bogus debugger: %s" (ns-name the-ns)))
-
-        btn-eval
-        (new JButton "Eval")
-
-        btn-locals
-        (new JButton "Locals")
-
-        btn-inspect
-        (new JButton "Inspect")
-
-        btn-clear
-        (new JButton "Clear")
 
         area-input
         (new JTextArea)
@@ -87,7 +77,7 @@
         area-output
         (new JTextArea)
 
-        area-log
+        area-locals
         (new JTextArea)
 
         scroll-input
@@ -96,18 +86,12 @@
         scroll-output
         (new JScrollPane area-output)
 
-        scroll-log
-        (new JScrollPane area-log)
+        scroll-locals
+        (new JScrollPane area-locals)
 
         fn-close
         (fn []
           (deliver latch true))
-
-        fn-clear
-        (fn []
-          (.setText area-input "")
-          (.setText area-output "")
-          (.setText area-log ""))
 
         fn-eval
         (fn []
@@ -132,29 +116,7 @@
                         (trace/print-stack-trace result)
                         (pprint/pprint result)))]
 
-                (.setText area-output output)
-
-                (.append area-log input)
-                (.append area-log br)
-                (.append area-log output)
-                (.append area-log br)
-
-                (.setCaretPosition area-log (.. area-log getDocument getLength))))))
-
-        fn-locals
-        (fn []
-          (let [output
-                (with-out-str
-                  (pprint/pprint locals))]
-
-            (.setText area-output ";; locals")
-            (.append area-output br)
-            (.append area-output br)
-            (.append area-output output)))
-
-        fn-inspect
-        (fn []
-          (inspector/inspect-tree locals))
+                (.setText area-output output)))))
 
         frame-listener
         (reify WindowListener
@@ -172,31 +134,9 @@
 
           (windowIconified [this e])
 
-          (windowOpened [this e]
-            #_(fn-locals)))]
+          (windowOpened [this e]))]
 
     (.addWindowListener frame frame-listener)
-
-    (.addActionListener btn-eval
-                        (reify ActionListener
-                          (actionPerformed [this e]
-                            (fn-eval))))
-
-    (.addActionListener btn-locals
-                        (reify ActionListener
-                          (actionPerformed [this e]
-                            (fn-locals))))
-
-    (.addActionListener btn-inspect
-                        (reify ActionListener
-                          (actionPerformed [this e]
-                            (fn-inspect))))
-
-    (.addActionListener btn-clear
-                        (reify ActionListener
-                          (actionPerformed [this e]
-                            (fn-clear))))
-
 
     (.addKeyListener area-input
                      (proxy [KeyListener] []
@@ -214,38 +154,31 @@
                 (with-out-str
                   (pprint/pprint form))))
 
-    (.setBounds btn-eval     20 130 100 50)
-    (.setBounds btn-locals  130 130 100 50)
-    (.setBounds btn-inspect 240 130 100 50)
-    (.setBounds btn-clear   350 130 100 50)
-
-    (.setBounds scroll-input  20  25 460 100)
+    (.setBounds scroll-input  20  25 460 155)
     (.setBounds scroll-output 20 205 460 175)
-    (.setBounds scroll-log    20 405 460 350)
 
     (.setEditable area-output false)
-    (.setEditable area-log false)
+    (.setEditable area-locals false)
 
     (.setLabelFor lab-input area-input)
     (.setLabelFor lab-output area-output)
-    (.setLabelFor lab-log area-log)
+    (.setLabelFor lab-locals area-locals)
 
     (.setBounds lab-input  20   5 500 20)
     (.setBounds lab-output 20 185 100 20)
-    (.setBounds lab-log    20 385 100 20)
+    (.setBounds lab-locals 20 385 100 20)
 
     (.add frame lab-input)
     (.add frame lab-output)
-    (.add frame lab-log)
-
-    (.add frame btn-eval)
-    (.add frame btn-locals)
-    (.add frame btn-inspect)
-    (.add frame btn-clear)
+    (.add frame lab-locals)
 
     (.add frame scroll-input)
     (.add frame scroll-output)
-    (.add frame scroll-log)
+
+    (let [scroll-locals
+          (new JScrollPane (new JTree ^TreeModel (inspector/tree-model locals)))]
+      (.setBounds scroll-locals 20 405 460 350)
+      (.add frame scroll-locals))
 
     (.setSize frame 500 800)
     (.setLayout frame nil)
