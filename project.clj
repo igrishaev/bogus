@@ -1,4 +1,4 @@
-(defproject com.github.igrishaev/bogus "0.1.6"
+(defproject com.github.igrishaev/bogus "0.1.7-SNAPSHOT"
 
   :description
   "A small, GUI-powered, NIH-reasoned debugger for Clojure"
