@@ -60,7 +60,7 @@
         options
 
         lab-input
-        (new JLabel "Input. Eval all forms or selected only. Press Enter + Shift/Control to eval")
+        (new JLabel "Input. Press Enter + Shift/Ctrl to eval all forms or selected only.")
 
         lab-output
         (new JLabel "Output")
@@ -90,33 +90,34 @@
         (new JScrollPane area-locals)
 
         fn-close
-        (fn []
-          (deliver latch true))
+        #(deliver latch true)
+
+        fn-window-opened
+        #((.setCaretPosition area-input (.. area-input getDocument getLength))
+          (.requestFocusInWindow area-input))
 
         fn-eval
-        (fn []
+        #(let [input
+               (str/trim
+                (or (.getSelectedText area-input)
+                    (.getText area-input)))]
 
-          (let [input
-                (str/trim
-                 (or (.getSelectedText area-input)
-                     (.getText area-input)))]
+           (when-not (str/blank? input)
+             (let [result
+                   (try
+                     (let [form
+                           (read-string (wrap-do input))]
+                       (eval+ the-ns locals form))
+                     (catch Throwable e
+                       e))
 
-            (when-not (str/blank? input)
-              (let [result
-                    (try
-                      (let [form
-                            (read-string (wrap-do input))]
-                        (eval+ the-ns locals form))
-                      (catch Throwable e
-                        e))
+                   output
+                   (with-out-str
+                     (if (throwable? result)
+                       (trace/print-stack-trace result)
+                       (pprint/pprint result)))]
 
-                    output
-                    (with-out-str
-                      (if (throwable? result)
-                        (trace/print-stack-trace result)
-                        (pprint/pprint result)))]
-
-                (.setText area-output output)))))
+               (.setText area-output output))))
 
         frame-listener
         (reify WindowListener
@@ -134,7 +135,8 @@
 
           (windowIconified [this e])
 
-          (windowOpened [this e]))]
+          (windowOpened [this e]
+            (fn-window-opened)))]
 
     (.addWindowListener frame frame-listener)
 
@@ -182,15 +184,18 @@
 
     (.setSize frame 500 800)
     (.setLayout frame nil)
+
+    (.setState frame JFrame/NORMAL)
+    (.setLocationRelativeTo frame nil)
     (.setVisible frame true)
 
-    ;; (.toFront frame)
-    ;; (.requestFocus frame)
-    ;; (.setState frame JFrame/NORMAL)
-
-    ;; trigger the focus
     (.setAlwaysOnTop frame true)
     (.setAlwaysOnTop frame false)
+
+    (.setFocusable frame true)
+    (.requestFocus frame)
+
+    ;; (.toFront frame)
 
     latch))
 
