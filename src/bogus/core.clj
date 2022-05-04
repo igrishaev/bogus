@@ -31,6 +31,13 @@
      ~@body))
 
 
+(defn prepend-text [text prefix]
+  (with-out-str
+    (doseq [line (str/split-lines text)]
+      (print prefix)
+      (println line))))
+
+
 (defn wrap-do [input]
   (format "(do %s)" input))
 
@@ -141,10 +148,12 @@
                       (let [form
                             (read-string (wrap-do (str/trim input)))]
 
-                        (.setText area-output ">> ")
+                        (.setText area-output "")
                         (.append area-output
-                                 (with-out-str
-                                   (pprint/pprint form)))
+                                 (prepend-text
+                                  (with-out-str
+                                    (pprint/pprint form))
+                                  "> "))
                         (.append area-output br)
 
                         (eval+ the-ns locals form))
