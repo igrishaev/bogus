@@ -51,23 +51,27 @@
              ~form))))
 
 
+(defn get-text-before-carret [^JTextArea text-area]
+  (let [offset (-> text-area .getCaret .getMark)]
+    (.getText text-area 0 offset)))
+
+
+(defn get-last-sexp-from-text [text]
+
+  (let [chunks
+        (str/split text #"\n\s*\n")
+
+        pred
+        (fn [line]
+          (-> line str/trim str/blank?))]
+
+    (last (remove pred chunks))))
+
+
 (defn get-last-sexp [^JTextArea text-area]
-
-  (let [offset
-        (-> text-area .getCaret .getMark)
-
-        chunk
-        (.getText text-area 0 offset)
-
-        chunks
-        (str/split chunk #"\n\n")
-
-        expr
-        (last (remove (fn [line]
-                        (-> line str/trim str/blank?))
-                      chunks))]
-
-    expr))
+  (-> text-area
+      (get-text-before-carret)
+      (get-last-sexp-from-text)))
 
 
 (defn show-gui [the-ns locals & [options]]
