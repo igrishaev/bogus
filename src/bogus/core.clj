@@ -81,6 +81,18 @@
       (get-last-sexp-from-text)))
 
 
+(defn ctrl|shift+enter? [^KeyEvent e]
+  (and
+   (= (.getKeyCode e) KeyEvent/VK_ENTER)
+   (or (.isShiftDown e)
+       (.isControlDown e))))
+
+(defn meta+j? [^KeyEvent e]
+  (and
+   (= (.getKeyCode e) 74) ;; j
+   (.isMetaDown e)))
+
+
 (defn show-gui [the-ns locals & [options]]
 
   (let [latch
@@ -196,10 +208,9 @@
                        (keyReleased [e])
                        (keyTyped [e])
                        (keyPressed [^KeyEvent e]
-                         (when (and
-                                (or (.isShiftDown e)
-                                    (.isControlDown e))
-                                (= (.getKeyCode e) KeyEvent/VK_ENTER))
+                         (when (or
+                                (ctrl|shift+enter? e)
+                                (meta+j? e))
                            (fn-eval)))))
 
     (when form
