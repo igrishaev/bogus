@@ -90,34 +90,44 @@
         (new JScrollPane area-locals)
 
         fn-close
-        #(deliver latch true)
+        (fn []
+          (deliver latch true))
 
         fn-window-opened
-        #((.setCaretPosition area-input (.. area-input getDocument getLength))
+        (fn []
           (.requestFocusInWindow area-input))
 
+        fn-init-input
+        (fn [form]
+          (.setText area-input
+                    (with-out-str
+                      (pprint/pprint form)))
+          (.setCaretPosition area-input
+                             (.. area-input getDocument getLength)))
+
         fn-eval
-        #(let [input
-               (str/trim
-                (or (.getSelectedText area-input)
-                    (.getText area-input)))]
+        (fn []
+          (let [input
+                (str/trim
+                 (or (.getSelectedText area-input)
+                     (.getText area-input)))]
 
-           (when-not (str/blank? input)
-             (let [result
-                   (try
-                     (let [form
-                           (read-string (wrap-do input))]
-                       (eval+ the-ns locals form))
-                     (catch Throwable e
-                       e))
+            (when-not (str/blank? input)
+              (let [result
+                    (try
+                      (let [form
+                            (read-string (wrap-do input))]
+                        (eval+ the-ns locals form))
+                      (catch Throwable e
+                        e))
 
-                   output
-                   (with-out-str
-                     (if (throwable? result)
-                       (trace/print-stack-trace result)
-                       (pprint/pprint result)))]
+                    output
+                    (with-out-str
+                      (if (throwable? result)
+                        (trace/print-stack-trace result)
+                        (pprint/pprint result)))]
 
-               (.setText area-output output))))
+                (.setText area-output output)))))
 
         frame-listener
         (reify WindowListener
@@ -152,9 +162,7 @@
                            (fn-eval)))))
 
     (when form
-      (.setText area-input
-                (with-out-str
-                  (pprint/pprint form))))
+      (fn-init-input form))
 
     (.setBounds scroll-input  20  25 460 155)
     (.setBounds scroll-output 20 205 460 175)
