@@ -51,6 +51,25 @@
              ~form))))
 
 
+(defn get-last-sexp [^JTextArea text-area]
+
+  (let [offset
+        (-> text-area .getCaret .getMark)
+
+        chunk
+        (.getText text-area 0 offset)
+
+        chunks
+        (str/split chunk #"\n\n")
+
+        expr
+        (last (remove (fn [line]
+                        (-> line str/trim str/blank?))
+                      chunks))]
+
+    expr))
+
+
 (defn show-gui [the-ns locals & [options]]
 
   (let [latch
@@ -60,7 +79,7 @@
         options
 
         lab-input
-        (new JLabel "Input. Press Enter + Shift/Ctrl to eval all forms or selected only.")
+        (new JLabel "Press Enter+Shift/Ctrl to eval the last sexp or selected text.")
 
         lab-output
         (new JLabel "Output")
@@ -107,16 +126,23 @@
 
         fn-eval
         (fn []
+
           (let [input
-                (str/trim
-                 (or (.getSelectedText area-input)
-                     (.getText area-input)))]
+                (or (.getSelectedText area-input)
+                    (get-last-sexp area-input))]
 
             (when-not (str/blank? input)
               (let [result
                     (try
                       (let [form
-                            (read-string (wrap-do input))]
+                            (read-string (wrap-do (str/trim input)))]
+
+                        (.setText area-output ">> ")
+                        (.append area-output
+                                 (with-out-str
+                                   (pprint/pprint form)))
+                        (.append area-output br)
+
                         (eval+ the-ns locals form))
                       (catch Throwable e
                         e))
@@ -127,7 +153,7 @@
                         (trace/print-stack-trace result)
                         (pprint/pprint result)))]
 
-                (.setText area-output output)))))
+                (.append area-output output)))))
 
         frame-listener
         (reify WindowListener
@@ -149,6 +175,8 @@
             (fn-window-opened)))]
 
     (.addWindowListener frame frame-listener)
+
+    ;; TODO: add Alt+Q to quit
 
     (.addKeyListener area-input
                      (proxy [KeyListener] []
