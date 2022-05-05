@@ -20,6 +20,11 @@
 
 (def br "\r\n")
 
+(def HELP "
+;; Press Enter + Shift/Control to execute the last sexp or selected text.
+;; Expressions must be separated with a blank line.
+")
+
 
 (defn throwable? [e]
   (instance? Throwable e))
@@ -102,7 +107,7 @@
         options
 
         lab-input
-        (new JLabel "Press Enter+Shift/Ctrl to eval the last sexp or selected text.")
+        (new JLabel "Intput")
 
         lab-output
         (new JLabel "Output")
@@ -141,9 +146,9 @@
 
         fn-init-input
         (fn [form]
-          (.setText area-input
-                    (with-out-str
-                      (pprint/pprint form)))
+          (.append area-input
+                   (with-out-str
+                     (pprint/pprint form)))
           (.setCaretPosition area-input
                              (.. area-input getDocument getLength)))
 
@@ -212,6 +217,12 @@
                                 (ctrl|shift+enter? e)
                                 (meta+j? e))
                            (fn-eval)))))
+
+    ;; show help
+    (.append area-input (str/trim HELP))
+    (.append area-input br)
+    (.append area-input br)
+
 
     (when form
       (fn-init-input form))

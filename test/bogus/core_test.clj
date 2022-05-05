@@ -3,7 +3,8 @@
    [bogus.core :refer [eval+
                        wrap-do
                        with-locals
-                       debug-reader]]
+                       debug-reader
+                       get-last-sexp-from-text]]
    [clojure.test :refer [is deftest testing]]))
 
 
@@ -92,3 +93,39 @@
             (println 42))
 
          '#bogus ^{:when (= i 42)} (println 42))))
+
+
+(deftest test-get-last-sexp
+
+  (is (= nil (get-last-sexp-from-text "")))
+
+  (is (= "\n(+ 1 2 3)\n"
+         (get-last-sexp-from-text "
+(+ 1 2 3)
+")))
+
+  (is (= "1\n"
+         (get-last-sexp-from-text "
+
+(+ 1 2 3)
+
+1
+")))
+
+  (is (= "1\n2\n"
+         (get-last-sexp-from-text "
+
+(+ 1 2 3)
+
+1
+2
+")))
+
+  (is (= "2\n"
+         (get-last-sexp-from-text "
+
+(+ 1 2 3)
+1
+\t\t\t
+2
+"))))
