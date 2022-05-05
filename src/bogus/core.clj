@@ -5,7 +5,9 @@
    [clojure.inspector :as inspector]
    [clojure.stacktrace :as trace])
   (:import
+   (javax.swing.tree TreeModel)
    (javax.swing JFrame
+                JTree
                 JLabel
                 JTextArea
                 JScrollPane
@@ -18,6 +20,11 @@
 
 (def br "\r\n")
 
+(def HELP "
+;; Press Enter + Shift/Control to execute the last sexp or selected text.
+;; Expressions must be separated with a blank line.
+")
+
 
 (defn throwable? [e]
   (instance? Throwable e))
@@ -27,6 +34,13 @@
   `(let [~bind ~(into {} (for [sym (keys &env)]
                            [(list 'quote sym) sym]))]
      ~@body))
+
+
+(defn prepend-text [text prefix]
+  (with-out-str
+    (doseq [line (str/split-lines text)]
+      (print prefix)
+      (println line))))
 
 
 (defn wrap-do [input]
@@ -49,6 +63,41 @@
              ~form))))
 
 
+(defn get-text-before-carret [^JTextArea text-area]
+  (let [offset (-> text-area .getCaret .getMark)]
+    (.getText text-area 0 offset)))
+
+
+(defn get-last-sexp-from-text [text]
+
+  (let [chunks
+        (str/split text #"\n\s*\n")
+
+        pred
+        (fn [line]
+          (-> line str/trim str/blank?))]
+
+    (last (remove pred chunks))))
+
+
+(defn get-last-sexp [^JTextArea text-area]
+  (-> text-area
+      (get-text-before-carret)
+      (get-last-sexp-from-text)))
+
+
+(defn ctrl|shift+enter? [^KeyEvent e]
+  (and
+   (= (.getKeyCode e) KeyEvent/VK_ENTER)
+   (or (.isShiftDown e)
+       (.isControlDown e))))
+
+(defn meta+j? [^KeyEvent e]
+  (and
+   (= (.getKeyCode e) 74) ;; j
+   (.isMetaDown e)))
+
+
 (defn show-gui [the-ns locals & [options]]
 
   (let [latch
@@ -58,28 +107,16 @@
         options
 
         lab-input
-        (new JLabel "Input. Eval all forms or selected only. Press Enter + Shift/Control to eval")
+        (new JLabel "Intput")
 
         lab-output
         (new JLabel "Output")
 
-        lab-log
-        (new JLabel "Log")
+        lab-locals
+        (new JLabel "Locals")
 
         frame
         (new JFrame (format "Bogus debugger: %s" (ns-name the-ns)))
-
-        btn-eval
-        (new JButton "Eval")
-
-        btn-locals
-        (new JButton "Locals")
-
-        btn-inspect
-        (new JButton "Inspect")
-
-        btn-clear
-        (new JButton "Clear")
 
         area-input
         (new JTextArea)
@@ -87,7 +124,7 @@
         area-output
         (new JTextArea)
 
-        area-log
+        area-locals
         (new JTextArea)
 
         scroll-input
@@ -96,32 +133,46 @@
         scroll-output
         (new JScrollPane area-output)
 
-        scroll-log
-        (new JScrollPane area-log)
+        scroll-locals
+        (new JScrollPane area-locals)
 
         fn-close
         (fn []
           (deliver latch true))
 
-        fn-clear
+        fn-window-opened
         (fn []
-          (.setText area-input "")
-          (.setText area-output "")
-          (.setText area-log ""))
+          (.requestFocusInWindow area-input))
+
+        fn-init-input
+        (fn [form]
+          (.append area-input
+                   (with-out-str
+                     (pprint/pprint form)))
+          (.setCaretPosition area-input
+                             (.. area-input getDocument getLength)))
 
         fn-eval
         (fn []
 
           (let [input
-                (str/trim
-                 (or (.getSelectedText area-input)
-                     (.getText area-input)))]
+                (or (.getSelectedText area-input)
+                    (get-last-sexp area-input))]
 
             (when-not (str/blank? input)
               (let [result
                     (try
                       (let [form
-                            (read-string (wrap-do input))]
+                            (read-string (wrap-do (str/trim input)))]
+
+                        (.setText area-output "")
+                        (.append area-output
+                                 (prepend-text
+                                  (with-out-str
+                                    (pprint/pprint form))
+                                  "> "))
+                        (.append area-output br)
+
                         (eval+ the-ns locals form))
                       (catch Throwable e
                         e))
@@ -132,29 +183,7 @@
                         (trace/print-stack-trace result)
                         (pprint/pprint result)))]
 
-                (.setText area-output output)
-
-                (.append area-log input)
-                (.append area-log br)
-                (.append area-log output)
-                (.append area-log br)
-
-                (.setCaretPosition area-log (.. area-log getDocument getLength))))))
-
-        fn-locals
-        (fn []
-          (let [output
-                (with-out-str
-                  (pprint/pprint locals))]
-
-            (.setText area-output ";; locals")
-            (.append area-output br)
-            (.append area-output br)
-            (.append area-output output)))
-
-        fn-inspect
-        (fn []
-          (inspector/inspect-tree locals))
+                (.append area-output output)))))
 
         frame-listener
         (reify WindowListener
@@ -173,83 +202,71 @@
           (windowIconified [this e])
 
           (windowOpened [this e]
-            #_(fn-locals)))]
+            (fn-window-opened)))]
 
     (.addWindowListener frame frame-listener)
 
-    (.addActionListener btn-eval
-                        (reify ActionListener
-                          (actionPerformed [this e]
-                            (fn-eval))))
-
-    (.addActionListener btn-locals
-                        (reify ActionListener
-                          (actionPerformed [this e]
-                            (fn-locals))))
-
-    (.addActionListener btn-inspect
-                        (reify ActionListener
-                          (actionPerformed [this e]
-                            (fn-inspect))))
-
-    (.addActionListener btn-clear
-                        (reify ActionListener
-                          (actionPerformed [this e]
-                            (fn-clear))))
-
+    ;; TODO: add Alt+Q to quit
 
     (.addKeyListener area-input
                      (proxy [KeyListener] []
                        (keyReleased [e])
                        (keyTyped [e])
                        (keyPressed [^KeyEvent e]
-                         (when (and
-                                (or (.isShiftDown e)
-                                    (.isControlDown e))
-                                (= (.getKeyCode e) KeyEvent/VK_ENTER))
+                         (when (or
+                                (ctrl|shift+enter? e)
+                                (meta+j? e))
                            (fn-eval)))))
 
+    ;; show help
+    (.append area-input (str/trim HELP))
+    (.append area-input br)
+    (.append area-input br)
+
+
     (when form
-      (.setText area-input
-                (with-out-str
-                  (pprint/pprint form))))
+      (fn-init-input form))
 
-    (.setBounds btn-eval     20 130 100 50)
-    (.setBounds btn-locals  130 130 100 50)
-    (.setBounds btn-inspect 240 130 100 50)
-    (.setBounds btn-clear   350 130 100 50)
-
-    (.setBounds scroll-input  20  25 460 100)
+    (.setBounds scroll-input  20  25 460 155)
     (.setBounds scroll-output 20 205 460 175)
-    (.setBounds scroll-log    20 405 460 350)
 
     (.setEditable area-output false)
-    (.setEditable area-log false)
+    (.setEditable area-locals false)
 
     (.setLabelFor lab-input area-input)
     (.setLabelFor lab-output area-output)
-    (.setLabelFor lab-log area-log)
+    (.setLabelFor lab-locals area-locals)
 
     (.setBounds lab-input  20   5 500 20)
     (.setBounds lab-output 20 185 100 20)
-    (.setBounds lab-log    20 385 100 20)
+    (.setBounds lab-locals 20 385 100 20)
 
     (.add frame lab-input)
     (.add frame lab-output)
-    (.add frame lab-log)
-
-    (.add frame btn-eval)
-    (.add frame btn-locals)
-    (.add frame btn-inspect)
-    (.add frame btn-clear)
+    (.add frame lab-locals)
 
     (.add frame scroll-input)
     (.add frame scroll-output)
-    (.add frame scroll-log)
+
+    (let [scroll-locals
+          (new JScrollPane (new JTree ^TreeModel (inspector/tree-model locals)))]
+      (.setBounds scroll-locals 20 405 460 350)
+      (.add frame scroll-locals))
 
     (.setSize frame 500 800)
     (.setLayout frame nil)
+
+    (.setState frame JFrame/NORMAL)
+    (.setLocationRelativeTo frame nil)
     (.setVisible frame true)
+
+    (.setAlwaysOnTop frame true)
+    (.setAlwaysOnTop frame false)
+
+    (.setFocusable frame true)
+    (.requestFocus frame)
+
+    ;; (.toFront frame)
 
     latch))
 
