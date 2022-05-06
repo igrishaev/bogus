@@ -98,6 +98,10 @@
    (.isMetaDown e)))
 
 
+(defn scroll-down [^JTextArea text-area]
+  (.. text-area getCaret (setDot Integer/MAX_VALUE)))
+
+
 (defn show-gui [the-ns locals & [options]]
 
   (let [latch
@@ -142,15 +146,14 @@
 
         fn-window-opened
         (fn []
-          (.requestFocusInWindow area-input))
+          (.requestFocusInWindow area-input)
+          (scroll-down area-input))
 
         fn-init-input
         (fn [form]
           (.append area-input
                    (with-out-str
-                     (pprint/pprint form)))
-          (.setCaretPosition area-input
-                             (.. area-input getDocument getLength)))
+                     (pprint/pprint form))))
 
         fn-eval
         (fn []
@@ -172,6 +175,7 @@
                                     (pprint/pprint form))
                                   "> "))
                         (.append area-output br)
+                        (scroll-down area-output)
 
                         (eval+ the-ns locals form))
                       (catch Throwable e
@@ -218,14 +222,16 @@
                                 (meta+j? e))
                            (fn-eval)))))
 
-    ;; show help
+    ;;
+    ;; Prepare input area
     (.append area-input (str/trim HELP))
     (.append area-input br)
     (.append area-input br)
 
-
     (when form
       (fn-init-input form))
+    ;; end
+    ;;
 
     (.setBounds scroll-input  20  25 460 155)
     (.setBounds scroll-output 20 205 460 175)
@@ -271,7 +277,20 @@
     latch))
 
 #_
-(show-gui *ns* {'foo 42} {:form '(+ 1 2 3)})
+(show-gui *ns* {'foo 42}
+          {:form '{:a "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :b "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :c "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :d "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :e "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :f "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :g "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :h "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :i "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :j "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :k "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :l "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                   :m "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}})
 
 
 (defmacro debug [& [{:as options
