@@ -1,0 +1,4 @@
+always on top option, checkbox
+alt-q hotkey
+alt-tab window
+quit loop/doseq
