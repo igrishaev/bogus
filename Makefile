@@ -1,13 +1,15 @@
 
-all:
-	lein install
+all: install
 
+install:
+	lein install
 
 .PHONY: test
 test:
 	lein test
 
-
-.PHONY: release
 release:
 	lein release
+
+repl:
+	lein repl

@@ -22,6 +22,7 @@
 
 (def HELP "
 ;; Press Enter + Shift/Control to execute the last sexp or selected text.
+;; Press Escape to exit.
 ;; Expressions must be separated with a blank line.
 ")
 
@@ -98,6 +99,10 @@
    (.isMetaDown e)))
 
 
+(defn escape? [^KeyEvent e]
+  (= (.getKeyCode e) 27))
+
+
 (defn scroll-down [^JTextArea text-area]
   (.. text-area getCaret (setDot Integer/MAX_VALUE)))
 
@@ -107,7 +112,8 @@
   (let [latch
         (promise)
 
-        {:keys [form]}
+        {:keys [form
+                always-on-top?]}
         options
 
         lab-input
@@ -142,7 +148,9 @@
 
         fn-close
         (fn []
-          (deliver latch true))
+          (deliver latch true)
+          (.setVisible frame false)
+          (.dispose frame))
 
         fn-window-opened
         (fn []
@@ -210,17 +218,16 @@
 
     (.addWindowListener frame frame-listener)
 
-    ;; TODO: add Alt+Q to quit
-
     (.addKeyListener area-input
                      (proxy [KeyListener] []
                        (keyReleased [e])
                        (keyTyped [e])
                        (keyPressed [^KeyEvent e]
-                         (when (or
-                                (ctrl|shift+enter? e)
-                                (meta+j? e))
-                           (fn-eval)))))
+                         (cond
+                           (or (ctrl|shift+enter? e) (meta+j? e))
+                           (fn-eval)
+                           (escape? e)
+                           (fn-close)))))
 
     ;;
     ;; Prepare input area
@@ -267,12 +274,8 @@
     (.setVisible frame true)
 
     (.setAlwaysOnTop frame true)
-    (.setAlwaysOnTop frame false)
-
     (.setFocusable frame true)
     (.requestFocus frame)
-
-    ;; (.toFront frame)
 
     latch))
 
