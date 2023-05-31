@@ -117,7 +117,7 @@
         options
 
         lab-input
-        (new JLabel "Intput")
+        (new JLabel "Input")
 
         lab-output
         (new JLabel "Output")
