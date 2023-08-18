@@ -4,6 +4,20 @@
 
 A small, GUI-powered, [NIH][NIH]-reasoned debugger for Clojure.
 
+## Table of Contents
+
+<!-- toc -->
+
+- [Installation](#installation)
+- [Usage](#usage)
+- [Conditional break](#conditional-break)
+- [How it works](#how-it-works)
+- [Why](#why)
+- [An issue with remote REPL by SSH on MacOS](#an-issue-with-remote-repl-by-ssh-on-macos)
+- [Other](#other)
+
+<!-- tocstop -->
+
 ## Installation
 
 Lein:
@@ -183,6 +197,35 @@ powerful tools for debugging, I still believe Bogus might be useful for someone
 new to Clojure. The main benefit of Bogus is, it doesn't require the whole nREPL
 stuff and Emacs. One can use it with any editor or environment. After all,
 tinkering with Bogus gave me some good material for the book.
+
+## An issue with remote REPL by SSH on MacOS
+
+I had an interesting setup in one project which prevented me to use Bogus at
+first. I connected to a local laptop (connected by Ethernet) by SSH and ran
+repl, then tried to use Bogus. I was also connected to the laptop by Screen
+Sharing and expected the Bogus window to pop up. But it didn't work as the JVM
+thought it was running in headless mode:
+
+~~~
+Exception in thread "main" java.awt.HeadlessException:
+The application is not running in a desktop session,
+but this program performed an operation which requires it.
+~~~
+
+It turned out, there are several ways to fix the issue, but the simplest one is
+to pass a special `AWT_FORCE_HEADFUL` variable when running nREPL:
+
+~~~bash
+AWT_FORCE_HEADFUL=true clj -M:nrepl ...
+# or
+AWT_FORCE_HEADFUL=true lein repl ...
+~~~
+
+[aahlenst]: https://aahlenst.dev/blog/starting-java-guis-on-macos-over-ssh/
+
+With that var set, the Bogus widget has successfully appeared inside Screen
+Sharing window. You're welcome to read [this blog post][aahlenst] for more
+details.
 
 ## Other
 

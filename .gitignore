@@ -14,3 +14,7 @@ pom.xml.asc
 
 dump.edn
 trash.clj
+
+node_modules/
+package-lock.json
+package.json
