@@ -96,19 +96,8 @@ In the input code, you can use any local variables as they're global ones. In th
 example above we've executed the `(+ a b c)` form referencing local `a`, `b`,
 and `c` from the `let` clause.
 
-The "Locals" button pretty-prints the local variables. Bogus does it in advance
-when the window opens the first time. The "Inspect" button opens the standard
-`clojure.inspector/inspect-tree` widget rendering the locals. This is quite
-useful when examining massive chunks of data.
-
-![](img/screen3.png)
-
-The Log area tracks the history of the expressions you executed and their
-results. That's useful sometimes to copy-paste it somewhere. Should you get an
-exception, it gets rendered with the `clojure.stacktrace/print-stack-trace`
-function (which probably needs some improvements).
-
-![](img/screen4.png)
+In the bottom of the form, there is a widget with pretty-printed local
+variables.
 
 You can have several debug breakpoints, for example:
 
@@ -229,4 +218,8 @@ details.
 
 ## Other
 
-Copyright &copy; 2022 Ivan Grishaev
+~~~
+©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©
+Ivan Grishaev, 2022. © UNLICENSE ©
+©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©©
+~~~

@@ -332,6 +332,23 @@
   (let [a 1
         b 2]
     (let [c 3]
+      #bogus
+      (+ a b c)))
+
+  (let [f1 (future
+             (let [a 1]
+               #bogus
+               (+ a 1)))
+        f2 (future
+             (let [b 2]
+               #bogus
+               (+ b 1)))]
+    (+ @f1 @f2))
+
+
+  (let [a 1
+        b 2]
+    (let [c 3]
       (with-locals [locals]
         locals)))
 
